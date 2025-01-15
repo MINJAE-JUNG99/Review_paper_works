@@ -160,7 +160,7 @@ class SinglePendulum:
             
         return self.train_data, self.valid_data, self.test_data
     
-    def plot_data(self, save_dir='data/uniform/single_pendulum_chaotic'):
+    def plot_data(self, save_dir='data/uniform/single_pendulum_undamped'):
         """데이터를 시각화하고 저장
         
         Args:
@@ -210,7 +210,7 @@ class SinglePendulum:
         plt.savefig(os.path.join(save_dir, f'{self.data_type}_data_plot.png'), dpi=300, bbox_inches='tight')
         plt.close()
     
-    def save_data(self, save_dir=f'data/uniform/single_pendulum_chaotic'):
+    def save_data(self, save_dir=f'data/uniform/single_pendulum_undamped'):
         """데이터를 텍스트 파일로 저장
         
         Args:
@@ -246,23 +246,42 @@ class SinglePendulum:
         print(f"\n데이터가 {save_dir} 디렉토리에 저장되었습니다.")
 
 
-def example_usage():
+def single_pen_undamped():
+    """사용 예시"""
+    # 진자 시스템 생성
+    pendulum = SinglePendulum(m=1.0, L=1.0, g=9.81, c=0.0, noise_level=0.0)
+    
+    # 데이터 생성
+    pendulum.generate_data(theta_0=0.5, omega_0=0.5, stoptime=10.0, numpoints=10010)
+    
+    # 데이터 분할
+    pendulum.split_data(train_size=1000, valid_size=200, test_size=2000, timestep=5)
+    
+    # 데이터 시각화
+    pendulum.plot_data(save_dir=f'data/uniform/single_pendulum_undamped')
+    
+    
+    # 데이터 저장
+    pendulum.save_data(save_dir=f'data/uniform/single_pendulum_undamped')
+    
+def single_pen_damped():
     """사용 예시"""
     # 진자 시스템 생성
     pendulum = SinglePendulum(m=1.0, L=1.0, g=9.81, c=0.3, noise_level=0.0)
     
     # 데이터 생성
-    pendulum.generate_data(theta_0=np.pi, omega_0=0.5, stoptime=10.0, numpoints=8010)
+    pendulum.generate_data(theta_0=0.5, omega_0=0.5, stoptime=10.0, numpoints=10010)
     
     # 데이터 분할
-    pendulum.split_data(train_size=800, valid_size=200, test_size=1000, timestep=5)
+    pendulum.split_data(train_size=1000, valid_size=200, test_size=2000, timestep=5)
     
     # 데이터 시각화
-    pendulum.plot_data()
+    pendulum.plot_data(save_dir=f'data/uniform/single_pendulum_damped')
     
     
     # 데이터 저장
-    pendulum.save_data()
-
+    pendulum.save_data(save_dir=f'data/uniform/single_pendulum_damped')
+    
 if __name__ == "__main__":
-    example_usage()
+    single_pen_damped()
+    single_pen_undamped()

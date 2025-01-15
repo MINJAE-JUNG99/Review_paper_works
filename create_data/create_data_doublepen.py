@@ -23,8 +23,8 @@ def double_pendulum_ode(y, t, m1, m2, L1, L2, g):
     return dydt
 
 
-is_chaotic = True
-uniform = False
+is_chaotic = False
+uniform = True
 
 # Parameters for double pendulum
 if is_chaotic:

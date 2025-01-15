@@ -28,7 +28,7 @@ else:
     dict_data = f'noise_{int(noise_level * 100)}%'  # Noise level에 따라 동적으로 설정
 
 # Initial conditions
-theta_0 = np.pi  # initial angle (45 degrees)
+theta_0 = 0.5  # initial angle (45 degrees)
 omega_0 = 0.5        # initial angular velocity
 initial_conditions = [theta_0, omega_0]
 
