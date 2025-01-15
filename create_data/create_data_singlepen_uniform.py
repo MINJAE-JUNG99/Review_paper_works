@@ -249,13 +249,13 @@ class SinglePendulum:
 def example_usage():
     """사용 예시"""
     # 진자 시스템 생성
-    pendulum = SinglePendulum(m=1.0, L=1.0, g=9.81, c=0.0, noise_level=0.03)
+    pendulum = SinglePendulum(m=1.0, L=1.0, g=9.81, c=0.3, noise_level=0.0)
     
     # 데이터 생성
     pendulum.generate_data(theta_0=np.pi, omega_0=0.5, stoptime=10.0, numpoints=8010)
     
     # 데이터 분할
-    pendulum.split_data(train_size=800, valid_size=200, test_size=1600, timestep=5)
+    pendulum.split_data(train_size=800, valid_size=200, test_size=1000, timestep=5)
     
     # 데이터 시각화
     pendulum.plot_data()
