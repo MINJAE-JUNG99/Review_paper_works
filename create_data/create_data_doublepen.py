@@ -23,7 +23,7 @@ def double_pendulum_ode(y, t, m1, m2, L1, L2, g):
     return dydt
 
 
-is_chaotic = False
+is_chaotic = True
 uniform = True
 
 # Parameters for double pendulum
@@ -244,15 +244,15 @@ np.savetxt(os.path.join(save_dir, f'{dict_data}_chaotic_input_test.txt' if is_ch
 
 # Saving the output data (including theta, omega, and alpha for both pendulums)
 np.savetxt(os.path.join(save_dir, f'{dict_data}_chaotic_output_train.txt' if is_chaotic else f'{dict_data}_moderate_output_train.txt'), 
-           np.column_stack((train_data[:, 1], train_data[:, 3], train_data[:, 2], train_data[:, 4], train_data[:, 6], train_data[:, 5])), 
+           np.column_stack((train_data[:, 1], train_data[:, 2], train_data[:, 3], train_data[:, 4], train_data[:, 5], train_data[:, 6])), 
            header='theta1\tomega1\talpha1\ttheta2\tomega2\talpha2', delimiter='\t')
 
 np.savetxt(os.path.join(save_dir, f'{dict_data}_chaotic_output_valid.txt' if is_chaotic else f'{dict_data}_moderate_output_valid.txt'), 
-           np.column_stack((val_data[:, 1], val_data[:, 3], val_data[:, 2], val_data[:, 4], val_data[:, 6], val_data[:, 5])), 
+           np.column_stack((val_data[:, 1], val_data[:, 2], val_data[:, 3], val_data[:, 4], val_data[:, 5], val_data[:, 6])), 
            header='theta1\tomega1\talpha1\ttheta2\tomega2\talpha2', delimiter='\t')
 
 np.savetxt(os.path.join(save_dir, f'{dict_data}_chaotic_output_test.txt' if is_chaotic else f'{dict_data}_moderate_output_test.txt'), 
-           np.column_stack((test_data[:, 1], test_data[:, 3], test_data[:, 2], test_data[:, 4], test_data[:, 6], test_data[:, 5])), 
+           np.column_stack((test_data[:, 1], test_data[:, 2], test_data[:, 3], test_data[:, 4], test_data[:, 5], test_data[:, 6])), 
            header='theta1\tomega1\talpha1\ttheta2\tomega2\talpha2', delimiter='\t')
 
 # import pandas as pd
