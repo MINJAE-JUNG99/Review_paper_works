@@ -121,36 +121,48 @@ class PendulumTrainer:
             return self.model(X).cpu().numpy()
 
 def plot_results(time_test: np.ndarray, test_data: np.ndarray, predictions: np.ndarray, 
-                noise_level: str, save_path: str):
-    """결과 시각화 및 저장"""
-    plt.figure(figsize=(15, 10))
+                 noise_level: str, save_path: str):
+    """결과 시각화 및 저장 (수정된 버전)"""
+    plt.figure(figsize=(15, 5))
+
+    # 색상 및 레이블 설정
+    colors = ['red', 'blue', 'green']
     labels = ['Angle', 'Angular Velocity', 'Angular Acceleration']
 
-    for i in range(len(labels)):
-        plt.subplot(3, 1, i + 1)
-        plt.plot(time_test, test_data[:, i], label=f'True {labels[i]}', color='blue')
+    # Extrapolation 구간 시작 시간 설정 (중앙 5초 구간)
+    extrapolation_start_time = time_test[len(time_test) // 2]  # 중앙 시간값
+
+    for i in range(3):
+        plt.plot(time_test, test_data[:, i], label=f'True {labels[i]}', 
+                 color='black', linestyle='-')
         plt.plot(time_test, predictions[:, i], label=f'Predicted {labels[i]}', 
-                color='red', linestyle='--')
-        plt.title(f'Test Data Prediction - {labels[i]}')
-        plt.xlabel('Time')
-        plt.ylabel(labels[i])
-        plt.legend()
-        plt.grid(True)
+                 color=colors[i], linestyle='--')
+
+    # Extrapolation 구간 시작점에 수직선 추가
+    plt.axvline(x=extrapolation_start_time, color='gray', linestyle='--', linewidth=2, 
+                label='Extrapolation Start')
+
+    plt.title('Test Data Prediction')
+    plt.xlabel('Time')
+    plt.ylabel('Values')
+    plt.legend()
+    plt.grid()
 
     plt.tight_layout()
     plt.savefig(save_path, dpi=200)
     plt.close()
 
+
 def main():
     # 하이퍼파라미터 설정
     config = {
         'input_size': 1,
-        'hidden_sizes': [128, 256, 128],
+        'hidden_sizes': [50, 50],
         'output_size': 3,
-        'num_epochs': 2000,
+        'num_epochs': 200,
         'learning_rate': 0.001,
-        'noise_level': 'noise_10%',
-        'damping': False
+        'noise_level': 'clean',
+        'damping': True
     }
 
     # 데이터 로드
@@ -200,7 +212,7 @@ def main():
     
     # 결과 플롯 및 저장
     plot_results(time_test.numpy(), data_test.numpy(), predictions, 
-                config['noise_level'], f'MLP/MLP_results_{config["noise_level"]}.png')
+                config['noise_level'], f'MLP/MLP_results_time_only_{config["noise_level"]}.png')
 
 if __name__ == "__main__":
     main()

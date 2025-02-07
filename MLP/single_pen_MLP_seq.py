@@ -22,7 +22,7 @@ def data_loading(noise_level, damping=False):
 
 # 데이터 로드
 noise_level = 'clean'  # 사용할 noise_level 설정
-damping = False  # 댐핑 여부 설정
+damping = True  # 댐핑 여부 설정
 
 time_train, time_test, time_valid, train_data, test_data, valid_data = data_loading(noise_level, damping)
 
@@ -68,7 +68,7 @@ class MLPModel(nn.Module):
 # 하이퍼파라미터 설정
 input_size = data_train_sorted.shape[1]  # 각도 및 각속도 각가속도
 hidden_size = 50
-output_size = 3  # 예측할 출력 크기 (각도 및 각가속도)
+output_size = 3  # 예측할 출력 크기 (각도 및 각속도 각가속도)
 num_epochs = 200  # 에포크 수 증가
 learning_rate = 0.001
 batch_size = 32
@@ -148,29 +148,35 @@ with torch.no_grad():
 # 결과 플롯
 plt.figure(figsize=(15, 5))
 
-# 학습 및 검증 손실 그래프
-plt.subplot(2, 1, 1)
-plt.plot(train_losses, label='Train Loss')
-plt.plot(valid_losses, label='Validation Loss')
-plt.title('Training and Validation Loss')
-plt.xlabel('Epoch')
-plt.ylabel('Loss')
-plt.legend()
-plt.grid(True)
-
-# 테스트 데이터 예측 결과 - 각도
-plt.subplot(2, 1, 2)
-plt.plot(time_test_sorted[seq_length:], data_test_sorted[seq_length:, 0], label='True Angle', color='blue')
+# 각도
+plt.plot(time_test_sorted[seq_length:], data_test_sorted[seq_length:, 0], label='Reference Angle', color='black', linestyle='-')
 plt.plot(time_test_sorted[seq_length:], y_test_pred.numpy()[:, 0], label='Predicted Angle', color='red', linestyle='--')
-plt.title('Test Data Prediction - Angle')
+
+# 각속도
+plt.plot(time_test_sorted[seq_length:], data_test_sorted[seq_length:, 1], label='Reference Angular Velocity', color='black', linestyle='-')
+plt.plot(time_test_sorted[seq_length:], y_test_pred.numpy()[:, 1], label='Predicted Angular Velocity', color='blue', linestyle='--')
+
+# 각가속도
+plt.plot(time_test_sorted[seq_length:], data_test_sorted[seq_length:, 2], label='Reference Angular Acceleration', color='black', linestyle='-')
+plt.plot(time_test_sorted[seq_length:], y_test_pred.numpy()[:, 2], label='Predicted Angular Acceleration', color='green', linestyle='--')
+
+
+# Extrapolation 구간 시작 시간 설정 (중앙 5초 구간)
+extrapolation_start_time = time_test[len(time_test) // 2]  # 중앙 시간값
+# Extrapolation 구간 시작점에 수직선 추가
+plt.axvline(x=extrapolation_start_time, color='gray', linestyle='--', linewidth=2, 
+                label='Extrapolation Start')
+
+plt.title('Test Data Prediction (Angle, Angular Velocity, Angular Acceleration)')
 plt.xlabel('Time')
-plt.ylabel('Angle')
+plt.ylabel('Value')
 plt.legend()
 plt.grid(True)
 
 plt.tight_layout()
-plt.savefig(f'MLP/MLP_results_full_{noise_level}.png', dpi=200)
+plt.savefig(f'MLP/MLP_results_seq_{noise_level}.png', dpi=200)
 plt.show()
+
 
 # MSE 계산
 mse = np.mean((data_test_sorted[seq_length:] - y_test_pred.numpy())**2)

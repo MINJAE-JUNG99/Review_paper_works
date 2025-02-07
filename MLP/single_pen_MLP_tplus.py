@@ -22,7 +22,7 @@ def data_loading(noise_level, damping=False):
 
 # 데이터 로드 및 정규화
 noise_level = 'clean'
-damping = False
+damping = True
 
 time_train, time_test, time_valid, train_data, test_data, valid_data = data_loading(noise_level, damping)
 
@@ -87,7 +87,7 @@ class MLPModel(nn.Module):
 input_size = X_train_tensor.shape[1]  # 수정: 입력 차원 업데이트
 hidden_size = 100
 output_size = y_train_tensor.shape[1]
-num_epochs = 2000
+num_epochs = 200
 learning_rate = 0.001
 
 # 모델 초기화
@@ -130,24 +130,35 @@ y_test_pred = (y_test_pred * std_train) + mean_train
 # 저장할 디렉토리 확인
 os.makedirs("MLP", exist_ok=True)
 
-# 결과 플롯
-plt.figure(figsize=(15, 10))
-labels = ['Angle', 'Angular Velocity', 'Angular Acceleration']
+# 결과 플롯 (한 플롯에 세 개의 변수 그리기)
+plt.figure(figsize=(15, 5))
 
+# True Data와 Predicted Data를 각 변수마다 플로팅
+labels = ['Angle', 'Angular Velocity', 'Angular Acceleration']
+colors = ['red', 'blue', 'green']
 for i in range(output_size):
-    plt.subplot(3, 1, i + 1)
-    plt.plot(time_test_sorted, data_test_sorted[:, i], label=f'True {labels[i]}', color='blue')
-    plt.plot(time_test_sorted, y_test_pred[:, i], label=f'Predicted {labels[i]}', color='red', linestyle='--')
-    plt.title(f'Test Data Prediction - {labels[i]}')
-    plt.xlabel('Time')
-    plt.ylabel(labels[i])
-    plt.legend()
-    plt.grid(True)
+    # 실제 데이터
+    plt.plot(time_test_sorted, data_test_sorted[:, i], label=f'Reference {labels[i]}', color='black')
+    
+    # 예측된 데이터
+    plt.plot(time_test_sorted, y_test_pred[:, i], label=f'Predicted {labels[i]}', color=colors[i], linestyle='--')
+
+# Extrapolation 구간 시작 시간 설정 (중앙 5초 구간)
+extrapolation_start_time = time_test[len(time_test) // 2]  # 중앙 시간값
+# Extrapolation 구간 시작점에 수직선 추가
+plt.axvline(x=extrapolation_start_time, color='gray', linestyle='--', linewidth=2, 
+                label='Extrapolation Start')
+
+# 제목, 레이블, 범례 설정
+plt.title('Test Data Prediction (Angle, Angular Velocity, Angular Acceleration)')
+plt.xlabel('Time')
+plt.ylabel('Value')
+plt.legend()
+plt.grid(True)
 
 plt.tight_layout()
-plt.savefig(f'MLP/MLP_results_{noise_level}.png', dpi=200)
+plt.savefig(f'MLP/MLP_results_tplus_{noise_level}.png', dpi=200)
 plt.show()
-
 # MSE 계산 및 CSV 저장
 mse = np.mean((data_test_sorted - y_test_pred) ** 2)
 print(f'Mean Squared Error: {mse:.6f}')
