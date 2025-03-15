@@ -1,0 +1,2 @@
+model_checkpoint_path: "single_pen_damped_PINN_clean.ckpt-20000.ckpt"
+all_model_checkpoint_paths: "single_pen_damped_PINN_clean.ckpt-20000.ckpt"
