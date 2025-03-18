@@ -5,6 +5,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+import pickle
 
 def add_noise(data, noise_level=0.0, seed=42):
     """
@@ -27,26 +28,39 @@ def add_noise(data, noise_level=0.0, seed=42):
         noise = np.random.normal(0, noise_level * max_amp, size=data[:, i].shape)
         noisy_data[:, i] = data[:, i] + noise
     return noisy_data
+
 #정규화 함수 추가
-def normalize_data(data, method="z-score"):
+def normalize_data(data, method="z-score", return_scaler=False):
+    
     if method == "z-score":
         mean = np.mean(data, axis=0)
         std = np.std(data, axis=0)
         normalized_data = (data - mean) / (std + 1e-8)
+        scaler = {'method': 'z-score', 'mean': mean, 'std': std}
     elif method == "min-max":
         min_val = np.min(data, axis=0)
         max_val = np.max(data, axis=0)
         normalized_data = (data - min_val) / (max_val - min_val + 1e-8)
+        scaler = {'method': 'min-max', 'min': min_val, 'max': max_val}
     else:
         raise ValueError("method는 'z-score' 또는 'min-max' 중 하나여야 합니다.")
-    return normalized_data
-
-#######  
-# dynamics_name는 반복문 내에서 'Pos', 'Vel', 'Acc'를 순차적으로 처리합니다.
-for noise_level in [0.0, 0.1]:  # 0.0이면 노이즈 없음, 0.1이면 최대 진폭의 10% 수준의 노이즈 추가
     
-    # Time와 Dynamics 딕셔너리: 각 데이터셋(학습, 검증, 테스트)에 대해 각각 각 dynamics (Pos, Vel, Acc)를 저장
-    Time, Dynamics = {k:{} for k in ['train', 'valid', 'test']}, {k:{} for k in ['train', 'valid', 'test']}
+    if return_scaler:
+        return normalized_data, scaler
+    else:
+        return normalized_data
+
+#########################################
+# 1. CSV 파일 로드 및 데이터 전처리
+#########################################
+# noise_level 설정: 0.0이면 노이즈 없음, 0.1이면 최대 진폭의 10% 노이즈 추가
+for noise_level in [0.0, 0.1]:
+    # 각 noise_level마다 각 dynamics의 스케일러를 저장할 딕셔너리 생성
+    scalers = {}  # key: dynamics_name, value: scaler dict
+
+    # Time와 Dynamics 딕셔너리: 각 데이터셋(학습, 검증, 테스트)에 대해 각 dynamics 데이터를 저장
+    Time = {k: {} for k in ['train', 'valid', 'test']}
+    Dynamics = {k: {} for k in ['train', 'valid', 'test']}
 
     for dynamics_name in ['Pos', 'Vel', 'Acc']:
         # CSV 파일 로드 (예: 25,000행 데이터가 있다고 가정)
@@ -56,13 +70,13 @@ for noise_level in [0.0, 0.1]:  # 0.0이면 노이즈 없음, 0.1이면 최대 �
         # 데이터 컬럼: [No, TIME, Acc_TX@StRq3, Acc_TY@StRq3, Acc_TZ@StRq3]
         time_all = data[:, 1]         # TIME 열, shape: (n_total,)
         dynamics = data[:, 2:5]         # dynamics 데이터, shape: (n_total, 3)
-
         n_total = data.shape[0]  # 예: 25000
         
-        #### 정규화: dynamics 데이터를 z-score 정규화 (clean 데이터 기준)        새로 정규화 추가한 부분입니다!! ####
-        dynamics = normalize_data(dynamics, method="z-score")
-        
-        
+        # 정규화: dynamics 데이터를 z-score 정규화 (clean 데이터 기준)
+        # 정규화와 함께 스케일러를 반환받습니다.
+        dynamics, scaler = normalize_data(dynamics, method="z-score", return_scaler=True)
+        # 각 dynamics별 스케일러 저장 (나중에 복원에 사용)
+        scalers[dynamics_name] = scaler
 
         # 파라미터 설정
         timestep = 5        # 인덱스 간격
@@ -72,11 +86,9 @@ for noise_level in [0.0, 0.1]:  # 0.0이면 노이즈 없음, 0.1이면 최대 �
 
         # 학습 데이터 인덱스: 0부터 시작, 일정한 timestep 간격
         train_indices = np.arange(0, train_size * timestep, timestep)
-
         # 검증 데이터 인덱스: 학습 데이터와 겹치지 않도록 offset=1 사용, 간격은 timestep*10 (예시)
         valid_start = 1
         valid_indices = np.arange(valid_start, valid_start + valid_size * timestep * 5, timestep * 5)
-
         # 테스트 데이터 인덱스: 전체 데이터에서 학습 및 검증에 사용되지 않은 인덱스 중 offset=2 사용
         test_start = 2
         test_indices = np.arange(test_start, test_start + test_size * timestep, timestep)
@@ -97,39 +109,46 @@ for noise_level in [0.0, 0.1]:  # 0.0이면 노이즈 없음, 0.1이면 최대 �
         intersect_train_test = np.intersect1d(train_indices, test_indices)
         intersect_val_test = np.intersect1d(valid_indices, test_indices)
 
-        print("Intersection between training and validation indices:", intersect_train_val)
-        print("Intersection between training and test indices:", intersect_train_test)
-        print("Intersection between validation and test indices:", intersect_val_test)
+        print(f"[{dynamics_name}] Intersection between training and validation indices:", intersect_train_val)
+        print(f"[{dynamics_name}] Intersection between training and test indices:", intersect_train_test)
+        print(f"[{dynamics_name}] Intersection between validation and test indices:", intersect_val_test)
 
         if (intersect_train_val.size == 0 and 
             intersect_train_test.size == 0 and 
             intersect_val_test.size == 0):
-            print("No overlapping indices among training, validation, and test datasets.")
+            print(f"[{dynamics_name}] No overlapping indices among training, validation, and test datasets.")
         else:
-            print("There is overlap in the datasets.")
+            print(f"[{dynamics_name}] There is overlap in the datasets.")
 
-        """ 노이즈 추가 설정 (예: 10% 노이즈) """
-        J = dynamics_name
+        # 노이즈 추가 설정 (예: 10% 노이즈)
         if noise_level > 0.:
-            # 학습과 검증 데이터에만 노이즈를 추가 (테스트 데이터는 그대로 사용)
+            # 학습과 검증 데이터에만 노이즈 추가 (테스트 데이터는 그대로 사용)
             for k in ['train', 'valid']:
                 Dynamics[k][J] = add_noise(Dynamics[k][J], noise_level=noise_level, seed=42)
-            
+    
+    # 스케일러 저장: 각 dynamics에 대한 scaler를 하나의 dict로 저장
+    scaler_save_dir = os.path.join("example", "scaler")
+    os.makedirs(scaler_save_dir, exist_ok=True)
+    noise_str = {0.0: "clean", 0.1: "noise10%"}[noise_level]
+    scaler_save_path = os.path.join(scaler_save_dir, f"scaler_MBD_VT_{noise_str}.pkl")
+    with open(scaler_save_path, "wb") as f:
+        pickle.dump(scalers, f)
+    print(f"Scalers saved to: {scaler_save_path}")
+    
     # 데이터 저장: 폴더 이름은 노이즈 수준에 따라 결정 (예: clean 또는 noise10%)
-    folder = './VT/%s/' % {0.:'clean', 0.1:'noise10%'}[noise_level]
-
+    folder = './VT/%s/' % ({0.0: 'clean', 0.1: 'noise10%'}[noise_level])
+    os.makedirs(folder, exist_ok=True)
+    
     for k in ['train', 'valid', 'test']:
         # 시간 데이터 저장 (2차원 배열, shape: (n,1))
-        np.savetxt(folder + 'input_%s.txt' % k, Time[k]['Acc'].reshape(-1, 1), delimiter='\t', header="Time")
+        np.savetxt(folder + 'input_%s.txt' % k, Time[k]['Acc'].reshape(-1, 1), delimiter='\t', header="Time", comments="")
         # 가속도 데이터 저장: 3축 데이터를 순서대로 쌓기 
         dynamics_all = np.hstack([Dynamics[k][j] for j in ['Pos', 'Vel', 'Acc']])
         # 재정렬: [Pos, Vel, Acc] -> [u, dot{u}, ddot{u}, v, dot{v}, ddot{v}, w, dot{w}, ddot{w}]
-        dynamics_all = np.hstack([dynamics_all[:,j].reshape(-1,1) for j in [0, 3, 6, 1, 4, 7, 2, 5, 8]])
+        dynamics_all = np.hstack([dynamics_all[:, j].reshape(-1, 1) for j in [0, 3, 6, 1, 4, 7, 2, 5, 8]])
         assert(dynamics_all.shape[1] == 9)
         np.savetxt(folder + 'output_%s.txt' % k, dynamics_all, delimiter='\t',
-           header="Pos_TX\tVel_TX\tAcc_TX\tPos_TY\tVel_TY\tAcc_TY\tPos_TZ\tVel_TZ\tAcc_TZ")
-
-
+                   header="Pos_TX\tVel_TX\tAcc_TX\tPos_TY\tVel_TY\tAcc_TY\tPos_TZ\tVel_TZ\tAcc_TZ", comments="")
 
 
 # # 모든 데이터셋 플롯 (세 축 모두 플롯)

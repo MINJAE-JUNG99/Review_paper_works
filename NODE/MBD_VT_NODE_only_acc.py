@@ -237,7 +237,7 @@ def main():
     optimizer = optim.Adam(node.parameters(), lr=config['learning_rate'])
     trainer = Trainer(node, optimizer, best_model_path)
     
-    training_mode = False  # True: 학습, False: 저장된 모델 불러오기 및 테스트
+    training_mode = True  # True: 학습, False: 저장된 모델 불러오기 및 테스트
     if training_mode:
         loss_history = trainer.train(data_train, time_train, data_valid, time_valid, config['n_iterations'])
         plt.figure(figsize=(10,6))

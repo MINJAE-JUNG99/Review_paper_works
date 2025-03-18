@@ -9,6 +9,8 @@ from typing import Tuple, List, Optional
 import logging
 from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm
+import pickle
+
 
 # ============================================================
 # PART 1: ODE Solvers and NeuralODE Definition
@@ -210,7 +212,7 @@ def main():
     # Configuration
     config = {
         'noise_level': 0.0,   # 0.0: clean, 다른 값은 노이즈 레벨 (예: 0.4는 noise_40%)
-        'chaotic': False,      # True이면 chaotic, False이면 moderate
+        'chaotic': False,     # True이면 chaotic, False이면 moderate
         'uniform': True,
         'learning_rate': 1e-3,
         'n_iterations': 2000,
@@ -250,15 +252,74 @@ def main():
     else:
         node.load_state_dict(torch.load(best_model_path))
         with torch.no_grad():
-            # 예측: data_test[0]을 unsqueeze하여 (1, 3) 형태로 전달하면,
-            # pred_y_test의 shape는 (len(time_test), 1, 3)이므로 squeeze하여 (len(time_test), 3)으로 변환합니다.
+            # 예측: data_test[0]을 unsqueeze하여 (1, 6) 형태로 전달하면,
+            # pred_y_test의 shape는 (len(time_test), 1, 6)이므로 squeeze하여 (len(time_test), 6)으로 변환합니다.
             pred_y_test = node(data_test[0].unsqueeze(0), time_test, RK4Solver, training=False)
             pred_y_test = pred_y_test.squeeze(1)
-            print("Prediction shape:", pred_y_test.shape)
+            print("Prediction shape (normalized):", pred_y_test.shape)
+        
+        # ===== 복원(Inverse Transform) 코드 추가 =====
+        # 저장된 스케일러 로드: 스케일러는 'example/scaler/scaler_MBD.pkl'에 저장되어 있습니다.
+        scaler_path = os.path.join("example", "scaler", "scaler_MBD.pkl")
+        with open(scaler_path, "rb") as f:
+            scaler_dict = pickle.load(f)
+        # scaler_dict에는 'vel'과 'acc' 키로 각각의 스케일러가 저장되어 있습니다.
+        scaler_vel = scaler_dict['vel']  # 예: {'method': 'z-score', 'mean': ..., 'std': ...}
+        scaler_acc = scaler_dict['acc']
+        
+        # 예측 결과의 열 순서: [vel_Tx, acc_Tx, vel_Ty, acc_Ty, vel_Tz, acc_Tz]
+        # 먼저 각 영역별로 분리합니다.
+        pred_vel = pred_y_test[:, [0, 2, 4]]
+        pred_acc = pred_y_test[:, [1, 3, 5]]
+        
+        # 스케일러의 mean, std를 torch.tensor로 변환
+        std_vel = torch.tensor(scaler_vel['std'], dtype=pred_y_test.dtype, device=pred_y_test.device)
+        mean_vel = torch.tensor(scaler_vel['mean'], dtype=pred_y_test.dtype, device=pred_y_test.device)
+        std_acc = torch.tensor(scaler_acc['std'], dtype=pred_y_test.dtype, device=pred_y_test.device)
+        mean_acc = torch.tensor(scaler_acc['mean'], dtype=pred_y_test.dtype, device=pred_y_test.device)
+        
+        # inverse transform: 원래 값 = normalized * std + mean
+        pred_vel_orig = pred_vel * std_vel + mean_vel
+        pred_acc_orig = pred_acc * std_acc + mean_acc
+        
+        # 복원된 예측 결과 재조립: 원래 순서 [vel_Tx, acc_Tx, vel_Ty, acc_Ty, vel_Tz, acc_Tz]
+        pred_y_restored = pred_y_test.clone()
+        pred_y_restored[:, 0] = pred_vel_orig[:, 0]
+        pred_y_restored[:, 1] = pred_acc_orig[:, 0]
+        pred_y_restored[:, 2] = pred_vel_orig[:, 1]
+        pred_y_restored[:, 3] = pred_acc_orig[:, 1]
+        pred_y_restored[:, 4] = pred_vel_orig[:, 2]
+        pred_y_restored[:, 5] = pred_acc_orig[:, 2]
+        # ===== 예측 복원 완료 =====
+        
+        # ===== True 데이터 복원 =====
+        # data_test의 열 순서는 예측과 동일: [vel_Tx, acc_Tx, vel_Ty, acc_Ty, vel_Tz, acc_Tz]
+        true_vel = data_test[:, [0, 2, 4]]
+        true_acc = data_test[:, [1, 3, 5]]
+        
+        std_vel_true = torch.tensor(scaler_vel['std'], dtype=data_test.dtype, device=data_test.device)
+        mean_vel_true = torch.tensor(scaler_vel['mean'], dtype=data_test.dtype, device=data_test.device)
+        std_acc_true = torch.tensor(scaler_acc['std'], dtype=data_test.dtype, device=data_test.device)
+        mean_acc_true = torch.tensor(scaler_acc['mean'], dtype=data_test.dtype, device=data_test.device)
+        
+        true_vel_orig = true_vel * std_vel_true + mean_vel_true
+        true_acc_orig = true_acc * std_acc_true + mean_acc_true
+        
+        true_data_restored = data_test.clone()
+        true_data_restored[:, 0] = true_vel_orig[:, 0]
+        true_data_restored[:, 1] = true_acc_orig[:, 0]
+        true_data_restored[:, 2] = true_vel_orig[:, 1]
+        true_data_restored[:, 3] = true_acc_orig[:, 1]
+        true_data_restored[:, 4] = true_vel_orig[:, 2]
+        true_data_restored[:, 5] = true_acc_orig[:, 2]
+        # ===== True 데이터 복원 완료 =====
+        
+        # 결과 플롯: 복원된 데이터를 사용하여 원래 스케일의 값을 확인합니다.
         results_fig_path = f"{config['save_dir']}/figs/MBD_VT_model_vel_acc_{noise_level_str}.png"
-        os.makedirs(Path(results_fig_path).parent, exist_ok=True)
-        plot_results(time_test, data_test, pred_y_test, f"NODE MBD_VT Test Data", results_fig_path)
+        os.makedirs(os.path.dirname(results_fig_path), exist_ok=True)
+        plot_results(time_test, true_data_restored, pred_y_restored, f"NODE MBD_VT Test Data (Restored)", results_fig_path)
         print(f"Result figure saved to {results_fig_path}")
 
 if __name__ == "__main__":
     main()
+

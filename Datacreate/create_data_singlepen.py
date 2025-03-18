@@ -248,37 +248,37 @@ class SinglePendulum:
         print(f"\n데이터가 {save_dir} 디렉토리에 저장되었습니다.")
 
 
-def single_pen_undamped(noise_level=0.0):
-    """감쇠가 없는 단일 진자 데이터 생성 (noise_level에 따라 데이터 생성 및 저장 경로가 결정됨)"""
-    noise_level_path = 'clean' if noise_level == 0.0 else f'noise_{int(noise_level * 100)}%'
+# def single_pen_undamped(noise_level=0.0):
+#     """감쇠가 없는 단일 진자 데이터 생성 (noise_level에 따라 데이터 생성 및 저장 경로가 결정됨)"""
+#     noise_level_path = 'clean' if noise_level == 0.0 else f'noise_{int(noise_level * 100)}%'
     
-    pendulum = SinglePendulum(m=1.0, L=1.0, g=9.81, c=0.0, noise_level=noise_level)
+#     pendulum = SinglePendulum(m=1.0, L=1.0, g=9.81, c=0.0, noise_level=noise_level)
     
-    # 데이터 생성
-    pendulum.generate_data(theta_0=0.5, omega_0=0.5, stoptime=10.0, numpoints=10010)
+#     # 데이터 생성
+#     pendulum.generate_data(theta_0=0.5, omega_0=0.5, stoptime=10.0, numpoints=10010)
     
-    # 데이터 분할
-    pendulum.split_data(train_size=1000, valid_size=200, test_size=2000, timestep=5)
+#     # 데이터 분할
+#     pendulum.split_data(train_size=1000, valid_size=200, test_size=2000, timestep=5)
     
-    # 데이터 시각화 및 저장
-    save_dir = os.path.join("data", "single_pendulum_no_damp", noise_level_path)
-    pendulum.plot_data(save_dir=save_dir)
-    pendulum.save_data(save_dir=save_dir)
+#     # 데이터 시각화 및 저장
+#     save_dir = os.path.join("data", "single_pendulum_no_damp", noise_level_path)
+#     pendulum.plot_data(save_dir=save_dir)
+#     pendulum.save_data(save_dir=save_dir)
     
     
-def single_pen_damped(noise_level=0.0):
+def single_pen_damped(noise_level=0.0, damping_coeff=0.3):
     """감쇠가 있는 단일 진자 데이터 생성 (noise_level에 따라 데이터 생성 및 저장 경로가 결정됨)"""
     noise_level_path = 'clean' if noise_level == 0.0 else f'noise_{int(noise_level * 100)}%'
     
-    pendulum = SinglePendulum(m=1.0, L=1.0, g=9.81, c=0.3, noise_level=noise_level)
+    pendulum = SinglePendulum(m=1.0, L=1.0, g=9.81, c=damping_coeff, noise_level=noise_level)
     
     # 데이터 생성
-    pendulum.generate_data(theta_0=0.5, omega_0=0.5, stoptime=10.0, numpoints=10010)
+    pendulum.generate_data(theta_0=0.5, omega_0=0.5, stoptime=20.0, numpoints=20010)
     
     # 데이터 분할
-    pendulum.split_data(train_size=1000, valid_size=200, test_size=2000, timestep=5)
+    pendulum.split_data(train_size=1000, valid_size=200, test_size=4000, timestep=5)
     
-    # 저장 경로에서 "uniform" 폴더 제거
+    # 저장 경로에서 
     save_dir = os.path.join("data", "single_pendulum_damped", noise_level_path)
     pendulum.plot_data(save_dir=save_dir)
     pendulum.save_data(save_dir=save_dir)
@@ -287,9 +287,9 @@ def single_pen_damped(noise_level=0.0):
 if __name__ == "__main__":
     # 예시: noise_level을 0.4 (즉, 40% 노이즈)로 설정하여 감쇠 및 비감쇠 데이터를 생성
     noise_level = 0.1  # 원하는 노이즈 수준 (0.0은 clean, 그 외 0~1 사이 값)
+    damping_coeff = 0.3  # 감쇠 계수
     
-    print("감쇠가 있는 데이터 생성:")
-    single_pen_damped(noise_level=noise_level)
+    single_pen_damped(noise_level=noise_level, damping_coeff=damping_coeff)
     
-    print("감쇠가 없는 데이터 생성:")
-    single_pen_undamped(noise_level=noise_level)
+    # print("감쇠가 없는 데이터 생성:")
+    # single_pen_undamped(noise_level=noise_level)
